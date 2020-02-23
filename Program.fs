@@ -1,7 +1,11 @@
 ﻿open System
 open Grokk
+open Grokk.Parser.Operators
 
 type T<'a, 'b> = Q of 'a * 'b
+
+type Textual = 
+  | MakeT of string
 
 [<EntryPoint>]
 let main argv =
@@ -11,7 +15,7 @@ let main argv =
   
   runWith
   <| Input.from "Hi, mom"
-  <| Parser.Chars.any
+  <| Parser.Chars.anyChar
 
   runWith
   <| Input.from "Hi, mom"
@@ -45,19 +49,19 @@ let main argv =
   <| Input.from "Hi, mom"
   <| text
 
-  let z =
-    Parser.zip
-      <| Parser.Chars.text "Hello, "
-      <| Parser.Chars.text "world"
+  let x = Parser.Chars.text "Hello, "
+  let y = Parser.Chars.text "world"
+
+  let z = Parser.zip x y
 
   runWith
   <| Input.from "Hello, world"
   <| z
 
-  let pq = 
-    Parser.alternative
-    <| Parser.Chars.text "Hi, mom"
-    <| Parser.Chars.text "Hello, world"
+  let hiMom = Parser.Chars.text "Hi, mom"
+  let helloWorld = Parser.Chars.text "Hello, world"
+
+  let pq = hiMom <|> helloWorld
 
   runWith
   <| Input.from "Hello, world"
@@ -70,5 +74,17 @@ let main argv =
   runWith
   <| Input.from "Come at me bro."
   <| pq
+
+  runWith
+  <| Input.from "Hello, world"
+  <| (x .>> y)
+
+  runWith
+  <| Input.from "Hello, world"
+  <| (x >>. y)
+
+  runWith
+  <| Input.from "Hello, world"
+  <| (x .>> y |>> MakeT)
 
   0

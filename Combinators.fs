@@ -104,6 +104,12 @@ module Grokk
     let zip p q = 
       zipWith (fun p' q' -> p', q') p q
 
+    let zipA p q =
+      zipWith (fun p' q' -> p') p q
+
+    let zipB p q =
+      zipWith (fun p' q' -> q') p q
+
     let rec repeatedly (read: 'a Parser) : 'a list Parser =
       read
       |> bind (fun theThing ->
@@ -121,17 +127,32 @@ module Grokk
 
     let alternative (p: 'a Parser) (q: 'a Parser) : 'a Parser =
       p >> Output.fold (fun (_, p') -> q p') Yes
-    
+
     let run input (p: 'a Parser) = p input
+
+
+    module Operators =
+
+      let (|>>) fa f = map f fa
+
+      let (>>=) fa f = bind f fa
+
+      let (.>>) = zipA
+
+      let (>>.) = zipB
+
+      let (.>>.) = zip
+
+      let (<|>) = alternative
 
 
     module Chars =
 
-      let any : Parser<char> =
+      let anyChar : Parser<char> =
         Input.consume
 
       let letter c =
-        any |> suchThat ((=) c)
+        anyChar |> suchThat ((=) c)
 
       let anyText length =
         Input.consumes length
