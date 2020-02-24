@@ -1,11 +1,16 @@
-module Grokk
+namespace Grokk
 
   open System
 
 
-  let konst a        = fun _ -> a
-  let untuple f a b  = f (a, b)
-  let tuple f (a, b) = f a b
+  [<AutoOpen>]
+  module Function =
+    
+    let konst a        = fun _ -> a
+    
+    let untuple f a b  = f (a, b)
+    
+    let tuple f (a, b) = f a b
 
 
   type Parser<'a> = 
@@ -82,7 +87,7 @@ module Grokk
       fold No f 
 
   
-  module Parser =
+  module Parsers =
 
     let yes thing = fun input -> 
       Yes (thing, input)
@@ -136,6 +141,18 @@ module Grokk
         <| map Some p
         <| yes None
 
+    let block popen pclose pbody =
+      zipA
+        <| zipB popen pbody
+        <| pclose
+
+    let bootstrap () : 'a Parser * 'a Parser ref =
+      let hcp _  = failwith "must initialize ref"
+      let future = ref hcp
+
+      !future, future
+
+    
     let run input (p: 'a Parser) = p input
 
 
@@ -159,8 +176,19 @@ module Grokk
       let anyChar : Parser<char> =
         Input.consume
 
+      let satisfies p =
+        anyChar |> suchThat p
+
+      let anyOf selection =
+        let set = Set.ofSeq selection
+        satisfies set.Contains
+
+      let noneOf selection =
+        let set = Set.ofSeq selection
+        satisfies (not << set.Contains)
+
       let letter c =
-        anyChar |> suchThat ((=) c)
+        satisfies ((=) c)
 
       let anyText length =
         Input.consumes length
@@ -169,3 +197,5 @@ module Grokk
       let text (t: string) =
         anyText t.Length
         |> suchThat ((=) t)
+
+      let whitespace = 1      
