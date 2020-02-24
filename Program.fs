@@ -87,4 +87,12 @@ let main argv =
   <| Input.from "Hello, world"
   <| (x .>> y |>> MakeT)
 
+  runWith
+  <| Input.from "Hello, world"
+  <| Parser.optionally hiMom
+
+  runWith
+  <| Input.from "Hi, mom"
+  <| Parser.optionally hiMom
+
   0

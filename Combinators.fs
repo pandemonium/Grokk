@@ -7,7 +7,9 @@ module Grokk
   let untuple f a b  = f (a, b)
   let tuple f (a, b) = f a b
 
-  type Parser<'a> = Input -> Output<'a>
+
+  type Parser<'a> = 
+    Input -> Output<'a>
 
   and Input =
     { data   : char array
@@ -25,6 +27,7 @@ module Grokk
     | NotThatThing
     | EndOfInput
 
+  
   module Input =
   
     let from (text: string) =
@@ -105,10 +108,10 @@ module Grokk
       zipWith (fun p' q' -> p', q') p q
 
     let zipA p q =
-      zipWith (fun p' q' -> p') p q
+      zipWith (fun p' _ -> p') p q
 
     let zipB p q =
-      zipWith (fun p' q' -> q') p q
+      zipWith (fun _ q' -> q') p q
 
     let rec repeatedly (read: 'a Parser) : 'a list Parser =
       read
@@ -125,8 +128,13 @@ module Grokk
           else konst <| expectedAThing input
       ) parser input
 
-    let alternative (p: 'a Parser) (q: 'a Parser) : 'a Parser =
+    let alternatively (p: 'a Parser) (q: 'a Parser) : 'a Parser =
       p >> Output.fold (fun (_, p') -> q p') Yes
+
+    let optionally (p: 'a Parser) : 'a option Parser =
+      alternatively
+        <| map Some p
+        <| yes None
 
     let run input (p: 'a Parser) = p input
 
@@ -143,7 +151,7 @@ module Grokk
 
       let (.>>.) = zip
 
-      let (<|>) = alternative
+      let (<|>) = alternatively
 
 
     module Chars =
