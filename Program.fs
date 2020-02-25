@@ -19,18 +19,18 @@ let main argv =
 
   runWith
   <| Input.from "Hi, mom"
-  <| Parsers.Chars.letter 'H'
+  <| Parsers.Chars.charLiteral 'H'
 
   runWith
   <| Input.from "Hi, mom"
-  <| Parsers.Chars.letter 'X'
+  <| Parsers.Chars.charLiteral 'X'
 
   runWith
   <| Input.from "aaab"
-  <| Parsers.repeatedly (Parsers.Chars.letter 'a')
+  <| Parsers.many (Parsers.Chars.charLiteral 'a')
 
-  let aaa = Parsers.repeatedly (Parsers.Chars.letter 'a')
-  let b = Parsers.Chars.letter 'b'
+  let aaa = Parsers.many (Parsers.Chars.charLiteral 'a')
+  let b = Parsers.Chars.charLiteral 'b'
   let aaab = Parsers.zip aaa b
   let p = aaab |> Parsers.map (fun (prefix, suffix) -> suffix, prefix)
 
@@ -89,10 +89,25 @@ let main argv =
 
   runWith
   <| Input.from "Hello, world"
-  <| Parsers.optionally hiMom
+  <| Parsers.maybe hiMom
 
   runWith
   <| Input.from "Hi, mom"
-  <| Parsers.optionally hiMom
+  <| Parsers.maybe hiMom
+
+  runWith
+  <| Input.from "\"Hi, mom\""
+  <| Parsers.Chars.delimitedText "\""
+  
+  let someJson = 
+    """
+      { "hi": 
+        [ "all",
+          "of",
+          "my",
+          "moms"
+        ]
+      }
+    """
 
   0

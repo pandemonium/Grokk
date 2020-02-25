@@ -92,7 +92,7 @@ namespace Grokk
     let yes thing = fun input -> 
       Yes (thing, input)
 
-    let expected aThing = fun input ->
+    let no aThing = fun input ->
       No (Expected aThing, input)
 
     let expectedAThing = fun input ->
@@ -118,14 +118,6 @@ namespace Grokk
     let zipB p q =
       zipWith (fun _ q' -> q') p q
 
-    let rec repeatedly (read: 'a Parser) : 'a list Parser =
-      read
-      |> bind (fun theThing ->
-           repeatedly read
-           |> map (fun things -> things @ [ theThing ])
-         )
-      >> Output.fold (fun (_, b) -> Yes ([], b)) Yes
-
     let suchThat qualifies (parser: 'a Parser) = fun input ->
       bind (fun theThing ->
         if qualifies theThing 
@@ -133,15 +125,23 @@ namespace Grokk
           else konst <| expectedAThing input
       ) parser input
 
-    let alternatively (p: 'a Parser) (q: 'a Parser) : 'a Parser =
+    let rec many (p: 'a Parser) : 'a list Parser =
+      p
+      |> bind (fun theThing ->
+           many p
+           |> map (fun stuff -> theThing::stuff)
+         )
+      >> Output.fold (fun (_, b) -> Yes ([], b)) Yes
+
+    let alternative (p: 'a Parser) (q: 'a Parser) : 'a Parser =
       p >> Output.fold (fun (_, p') -> q p') Yes
 
-    let optionally (p: 'a Parser) : 'a option Parser =
-      alternatively
+    let maybe (p: 'a Parser) : 'a option Parser =
+      alternative
         <| map Some p
         <| yes None
 
-    let block popen pclose pbody =
+    let enclosed popen pclose (pbody: 'a Parser) : 'a Parser  =
       zipA
         <| zipB popen pbody
         <| pclose
@@ -152,7 +152,6 @@ namespace Grokk
 
       !future, future
 
-    
     let run input (p: 'a Parser) = p input
 
 
@@ -168,7 +167,7 @@ namespace Grokk
 
       let (.>>.) = zip
 
-      let (<|>) = alternatively
+      let (<|>) = alternative
 
 
     module Chars =
@@ -187,8 +186,11 @@ namespace Grokk
         let set = Set.ofSeq selection
         satisfies (not << set.Contains)
 
-      let letter c =
+      let charLiteral c =
         satisfies ((=) c)
+
+      let digit = 
+        anyOf <| seq { '0' .. '9' }
 
       let anyText length =
         Input.consumes length
@@ -198,4 +200,43 @@ namespace Grokk
         anyText t.Length
         |> suchThat ((=) t)
 
-      let whitespace = 1      
+      let whiteSpace = 
+        anyOf " \t\r\n"
+
+      let delimitedText (delimiter: string) =
+        let quoted =
+          many (noneOf delimiter)
+          |> map String.Concat
+
+        enclosed
+        <| text delimiter 
+        <| text delimiter 
+        <| quoted
+
+    module Numbers =
+      
+      open Operators
+
+
+      let parseInt (text: string) =
+        match Int32.TryParse text with
+          | true, number -> yes number
+          | false, _     -> no <| sprintf "%s is not a number" text
+
+      let integer =
+        Chars.digit
+        |> many
+        |> map String.Concat
+        |> bind parseInt
+
+      let parseDecimal (text: string) =
+        match Decimal.TryParse text with
+          | true, number -> yes number
+          | false, _     -> no <| sprintf "%s is not a number" text
+
+      let floatingPoint =
+        Chars.digit <|> Chars.charLiteral '.'
+        |> many
+        |> map String.Concat
+        |> bind parseDecimal
+        
