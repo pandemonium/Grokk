@@ -25,55 +25,72 @@ namespace Grokk.Tests
       open Parsers
       open Parsers.Operators
 
+      let token (p: 'a Parser) : 'a Parser = 
+        p .>> Chars.whiteSpace
+
       let quote       = Chars.charLiteral '"'
 
       let stringChar  = Chars.noneOf "\""
 
-      let equals      = Chars.charLiteral '='
+      let equals      = token <| Chars.charLiteral '='
 
-      let beginObject = Chars.charLiteral '{'
+      let beginObject = token <| Chars.charLiteral '{'
 
-      let endObject   = Chars.charLiteral '}'
+      let endObject   = token <| Chars.charLiteral '}'
 
-      let beginArray  = Chars.charLiteral '['
+      let beginArray  = token <| Chars.charLiteral '['
 
-      let endArray    = Chars.charLiteral ']'
+      let endArray    = token <| Chars.charLiteral ']'
 
-      let jstring     = Chars.delimitedText "\""
+      let jstring     = token <| Chars.delimitedText "\""
 
-      let jnumber     = Numbers.floatingPoint
+      let jnumber     = token <| Numbers.floatingPoint
 
-      let jnull       = Chars.text "null"
+      let jnull       = token <| Chars.text "null"
 
-      let jtrue       = Chars.text "true"
+      let jtrue       = token <| Chars.text "true"
 
-      let jfalse      = Chars.text "false"
+      let jfalse      = token <| Chars.text "false"
 
       let literal =
-        (zipB jnull  <| yes Null) <|>
-        (zipB jtrue  <| yes True) <|>
-        (zipB jfalse <| yes False)
+        produce jnull  Null <|>
+        produce jtrue  True <|>
+        produce jfalse False
+        |> token
         |> map MakeLiteral
 
       let value, valueRef = bootstrap ()
 
-      let field = jstring .>>. value
+      let field : (string * Value) Parser = 
+        (jstring .>> equals) .>>. value
 
-      let object = 
-        beginObject >>. (many field) .>> endObject
-        |> map MakeObject
+      let listOf item =
+        manySep item
+        <| Chars.charLiteral ','
 
       let array =
-        beginArray >>. (many value) .>> endArray
+        listOf value
+        |> within beginArray endArray
         |> map MakeArray
+
+      let object = 
+        listOf field
+        |> within beginObject endObject
+        |> map MakeObject
 
       let root =
         object <|> array
         |> map MakeRoot
 
-      let numberValue = jnumber |> map MakeNumber
+      let numberValue = 
+        jnumber 
+        |> token
+        |> map MakeNumber
 
-      let stringValue = jstring |> map MakeString
+      let stringValue = 
+        jstring 
+        |> token
+        |> map MakeString
 
       valueRef := 
         literal <|> root <|> numberValue <|> stringValue

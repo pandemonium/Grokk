@@ -112,11 +112,17 @@ namespace Grokk
     let zip p q = 
       zipWith (fun p' q' -> p', q') p q
 
-    let zipA p q =
-      zipWith (fun p' _ -> p') p q
+    let zipA a b =
+      zipWith (fun a' _ -> a') a b
 
-    let zipB p q =
-      zipWith (fun _ q' -> q') p q
+    let zipB a b =
+      zipWith (fun _ b' -> b') a b
+
+    let produce p x =
+      zipB p <| yes x
+
+    let skip p =
+      produce p ()
 
     let suchThat qualifies (parser: 'a Parser) = fun input ->
       bind (fun theThing ->
@@ -124,6 +130,14 @@ namespace Grokk
           then yes theThing
           else konst <| expectedAThing input
       ) parser input
+
+    let alternative (p: 'a Parser) (q: 'a Parser) : 'a Parser =
+      p >> Output.fold (fun (_, p') -> q p') Yes
+
+    let maybe (p: 'a Parser) : 'a option Parser =
+      alternative
+        <| map Some p
+        <| yes None  
 
     let rec many (p: 'a Parser) : 'a list Parser =
       p
@@ -133,15 +147,18 @@ namespace Grokk
          )
       >> Output.fold (fun (_, b) -> Yes ([], b)) Yes
 
-    let alternative (p: 'a Parser) (q: 'a Parser) : 'a Parser =
-      p >> Output.fold (fun (_, p') -> q p') Yes
+    let manySep (p: 'a Parser) (sep: 'b Parser) : 'a list Parser =
+      maybe p 
+      |> bind (function
+        | Some p' -> 
+          zipB sep p
+          |> many
+          |> map (fun stuff -> p' :: stuff)
+        | None    -> 
+          yes []
+      )
 
-    let maybe (p: 'a Parser) : 'a option Parser =
-      alternative
-        <| map Some p
-        <| yes None
-
-    let enclosed popen pclose (pbody: 'a Parser) : 'a Parser  =
+    let within popen pclose (pbody: 'a Parser) : 'a Parser  =
       zipA
         <| zipB popen pbody
         <| pclose
@@ -208,7 +225,7 @@ namespace Grokk
           many (noneOf delimiter)
           |> map String.Concat
 
-        enclosed
+        within
         <| text delimiter 
         <| text delimiter 
         <| quoted

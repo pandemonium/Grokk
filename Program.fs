@@ -99,6 +99,10 @@ let main argv =
   <| Input.from "\"Hi, mom\""
   <| Parsers.Chars.delimitedText "\""
   
+  runWith
+  <| Input.from "1,2,3,4,5"
+  <| Parsers.manySep Parsers.Chars.digit (Parsers.Chars.charLiteral ',')
+  
   let someJson = 
     """
       { "hi": 
