@@ -26,47 +26,51 @@ namespace Grokk.Tests
       open Parsers.Operators
 
       let token (p: 'a Parser) : 'a Parser = 
-        p .>> Chars.whiteSpace
+        p .>> (many Chars.whiteSpace)
 
       let quote       = Chars.charLiteral '"'
 
       let stringChar  = Chars.noneOf "\""
 
-      let equals      = token <| Chars.charLiteral '='
+      let charToken   = Chars.charLiteral >> token
+      
+      let nameValSep  = charToken ':'
 
-      let beginObject = token <| Chars.charLiteral '{'
+      let beginObject = charToken '{'
 
-      let endObject   = token <| Chars.charLiteral '}'
+      let endObject   = charToken '}'
 
-      let beginArray  = token <| Chars.charLiteral '['
+      let beginArray  = charToken '['
 
-      let endArray    = token <| Chars.charLiteral ']'
+      let endArray    = charToken ']'
+
+      let listSep     = charToken ','
 
       let jstring     = token <| Chars.delimitedText "\""
 
-      let jnumber     = token <| Numbers.floatingPoint
+      let jnumber     = token Numbers.floatingPoint
 
-      let jnull       = token <| Chars.text "null"
+      let textToken   = Chars.text >> token
 
-      let jtrue       = token <| Chars.text "true"
+      let jnull       = textToken "null"
 
-      let jfalse      = token <| Chars.text "false"
+      let jtrue       = textToken "true"
+
+      let jfalse      = textToken "false"
 
       let literal =
         produce jnull  Null <|>
         produce jtrue  True <|>
         produce jfalse False
-        |> token
         |> map MakeLiteral
 
       let value, valueRef = bootstrap ()
 
       let field : (string * Value) Parser = 
-        (jstring .>> equals) .>>. value
+        (jstring .>> nameValSep) .>>. value
 
       let listOf item =
-        manySep item
-        <| Chars.charLiteral ','
+        manySep item listSep
 
       let array =
         listOf value
@@ -78,19 +82,19 @@ namespace Grokk.Tests
         |> within beginObject endObject
         |> map MakeObject
 
-      let root =
+      let toplevel =
         object <|> array
         |> map MakeRoot
 
       let numberValue = 
         jnumber 
-        |> token
         |> map MakeNumber
 
       let stringValue = 
         jstring 
-        |> token
         |> map MakeString
 
-      valueRef := 
-        literal <|> root <|> numberValue <|> stringValue
+      valueRef :=
+        token <| (literal <|> toplevel <|> numberValue <|> stringValue)
+
+      let root = toplevel

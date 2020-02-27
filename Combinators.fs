@@ -164,10 +164,10 @@ namespace Grokk
         <| pclose
 
     let bootstrap () : 'a Parser * 'a Parser ref =
-      let hcp _  = failwith "must initialize ref"
+      let hcp = fun input -> Yes (failwith "must initialize ref", input)
       let future = ref hcp
 
-      !future, future
+      (fun input -> !future input), future
 
     let run input (p: 'a Parser) = p input
 

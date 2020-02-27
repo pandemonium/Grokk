@@ -1,6 +1,7 @@
 ﻿open System
 open Grokk
 open Grokk.Parsers.Operators
+open Grokk.Tests
 
 type T<'a, 'b> = Q of 'a * 'b
 
@@ -105,13 +106,14 @@ let main argv =
   
   let someJson = 
     """
-      { "hi": 
-        [ "all",
-          "of",
-          "my",
-          "moms"
-        ]
+      {
+        "Hi": "mom",
+        "Hello": [ "world", 42]
       }
     """
+
+  runWith
+  <| Input.from (someJson.Trim ())
+  <| Json.Parser.root
 
   0
