@@ -211,10 +211,10 @@ namespace Grokk
 
       let anyText length =
         Input.consumes length
-        |> map String
 
       let text (t: string) =
         anyText t.Length
+        |> map String
         |> suchThat ((=) t)
 
       let whiteSpace = 
@@ -230,10 +230,10 @@ namespace Grokk
         <| text delimiter 
         <| quoted
 
+
     module Numbers =
       
       open Operators
-
 
       let parseInt (text: string) =
         match Int32.TryParse text with

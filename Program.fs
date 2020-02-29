@@ -1,7 +1,7 @@
 ﻿open System
 open Grokk
 open Grokk.Parsers.Operators
-open Grokk.Tests
+open Grokk.Sample
 
 type T<'a, 'b> = Q of 'a * 'b
 
@@ -106,14 +106,22 @@ let main argv =
   
   let someJson = 
     """
-      {
-        "Hi": "mom",
+      [{
+        "Hi": null,
         "Hello": [ "world", 42]
-      }
+      },
+      {
+        "Hi": false,
+        "Hello": [ "world", 42.7]
+      }]
     """
 
   runWith
   <| Input.from (someJson.Trim ())
   <| Json.Parser.root
+
+  runWith
+  <| Input.from "d3:cow3:moo4:spaml4:infoi32eee"  
+  <| Bencode.Parse.value
 
   0

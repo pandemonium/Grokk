@@ -1,4 +1,4 @@
-namespace Grokk.Tests
+namespace Grokk.Sample
 
   open Grokk
 
@@ -6,14 +6,14 @@ namespace Grokk.Tests
   module Json =
 
     type Value =
-      | MakeNumber  of decimal
-      | MakeString  of string
-      | MakeLiteral of Literal
-      | MakeRoot    of Root
+      | Number         of decimal
+      | Text           of string
+      | SpecialLiteral of Literal
+      | Aggregate      of Aggregate
 
-    and Root =
-      | MakeObject  of (string * Value) list
-      | MakeArray   of Value list
+    and Aggregate =
+      | Object         of (string * Value) list
+      | Array          of Value list
 
     and Literal =
       | True
@@ -58,11 +58,11 @@ namespace Grokk.Tests
 
       let jfalse      = textToken "false"
 
-      let literal =
+      let specialLiteral =
         produce jnull  Null <|>
         produce jtrue  True <|>
         produce jfalse False
-        |> map MakeLiteral
+        |> map SpecialLiteral
 
       let value, valueRef = bootstrap ()
 
@@ -75,26 +75,26 @@ namespace Grokk.Tests
       let array =
         listOf value
         |> within beginArray endArray
-        |> map MakeArray
+        |> map Array
 
       let object = 
         listOf field
         |> within beginObject endObject
-        |> map MakeObject
+        |> map Object
 
       let toplevel =
         object <|> array
-        |> map MakeRoot
+        |> map Aggregate
 
       let numberValue = 
         jnumber 
-        |> map MakeNumber
+        |> map Number
 
       let stringValue = 
         jstring 
-        |> map MakeString
+        |> map Text
 
       valueRef :=
-        token <| (literal <|> toplevel <|> numberValue <|> stringValue)
+        token <| (specialLiteral <|> toplevel <|> numberValue <|> stringValue)
 
       let root = toplevel
