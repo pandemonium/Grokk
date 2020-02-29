@@ -6,16 +6,19 @@ namespace Grokk.Sample
   module Json =
 
     type Value =
-      | Number         of decimal
-      | Text           of string
-      | SpecialLiteral of Literal
+      | Scalar         of Scalar
       | Aggregate      of Aggregate
 
     and Aggregate =
       | Object         of (string * Value) list
       | Array          of Value list
 
-    and Literal =
+    and Scalar =
+      | Number         of decimal
+      | Text           of string
+      | Special        of SpecialLiteral
+
+    and SpecialLiteral =
       | True
       | False
       | Null
@@ -62,7 +65,17 @@ namespace Grokk.Sample
         produce jnull  Null <|>
         produce jtrue  True <|>
         produce jfalse False
-        |> map SpecialLiteral
+        |>> Special
+
+      let numberValue = 
+        jnumber |>> Number
+
+      let stringValue = 
+        jstring |>> Text
+
+      let scalar =
+        specialLiteral  <|> numberValue <|> stringValue
+        |>> Scalar
 
       let value, valueRef = bootstrap ()
 
@@ -75,26 +88,19 @@ namespace Grokk.Sample
       let array =
         listOf value
         |> within beginArray endArray
-        |> map Array
+        |>> Array
 
       let object = 
         listOf field
         |> within beginObject endObject
-        |> map Object
+        |>> Object
 
-      let toplevel =
+      let aggregate =
         object <|> array
-        |> map Aggregate
-
-      let numberValue = 
-        jnumber 
-        |> map Number
-
-      let stringValue = 
-        jstring 
-        |> map Text
+        |>> Aggregate
 
       valueRef :=
-        token <| (specialLiteral <|> toplevel <|> numberValue <|> stringValue)
+        aggregate <|> scalar
+        |> token
 
-      let root = toplevel
+      let root = aggregate
