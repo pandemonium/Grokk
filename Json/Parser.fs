@@ -1,106 +1,103 @@
-namespace Grokk.Sample
+namespace Grokk.Json
 
-  open Grokk
+  type Value =
+    | Scalar         of Scalar
+    | Aggregate      of Aggregate
+
+  and Aggregate =
+    | Object         of (string * Value) list
+    | Array          of Value list
+
+  and Scalar =
+    | Number         of decimal
+    | Text           of string
+    | Special        of SpecialLiteral
+
+  and SpecialLiteral =
+    | True
+    | False
+    | Null
 
 
-  module Json =
+  module Parser =
 
-    type Value =
-      | Scalar         of Scalar
-      | Aggregate      of Aggregate
+    open Grokk
+    open Parsers
+    open Operators
 
-    and Aggregate =
-      | Object         of (string * Value) list
-      | Array          of Value list
+    let token (p: 'a Parser) : 'a Parser = 
+      p .>> (many Chars.whiteSpace)
 
-    and Scalar =
-      | Number         of decimal
-      | Text           of string
-      | Special        of SpecialLiteral
+    let quote       = Chars.charLiteral '"'
 
-    and SpecialLiteral =
-      | True
-      | False
-      | Null
+    let stringChar  = Chars.noneOf "\""
 
-    module Parser =
+    let charToken   = Chars.charLiteral >> token
+    
+    let nameValSep  = charToken ':'
 
-      open Parsers
-      open Parsers.Operators
+    let beginObject = charToken '{'
 
-      let token (p: 'a Parser) : 'a Parser = 
-        p .>> (many Chars.whiteSpace)
+    let endObject   = charToken '}'
 
-      let quote       = Chars.charLiteral '"'
+    let beginArray  = charToken '['
 
-      let stringChar  = Chars.noneOf "\""
+    let endArray    = charToken ']'
 
-      let charToken   = Chars.charLiteral >> token
-      
-      let nameValSep  = charToken ':'
+    let listSep     = charToken ','
 
-      let beginObject = charToken '{'
+    let jstring     = token <| Chars.delimitedText "\""
 
-      let endObject   = charToken '}'
+    let jnumber     = token Numbers.floatingPoint
 
-      let beginArray  = charToken '['
+    let textToken   = Chars.text >> token
 
-      let endArray    = charToken ']'
+    let jnull       = textToken "null"
 
-      let listSep     = charToken ','
+    let jtrue       = textToken "true"
 
-      let jstring     = token <| Chars.delimitedText "\""
+    let jfalse      = textToken "false"
 
-      let jnumber     = token Numbers.floatingPoint
+    let specialLiteral =
+      produce jnull  Null <|>
+      produce jtrue  True <|>
+      produce jfalse False
+      |>> Special
 
-      let textToken   = Chars.text >> token
+    let numberValue = 
+      jnumber |>> Number
 
-      let jnull       = textToken "null"
+    let stringValue = 
+      jstring |>> Text
 
-      let jtrue       = textToken "true"
+    let scalar =
+      specialLiteral  <|> numberValue <|> stringValue
+      |>> Scalar
 
-      let jfalse      = textToken "false"
+    let value, valueRef = bootstrap ()
 
-      let specialLiteral =
-        produce jnull  Null <|>
-        produce jtrue  True <|>
-        produce jfalse False
-        |>> Special
+    let field : (string * Value) Parser = 
+      (jstring .>> nameValSep) .>>. value
 
-      let numberValue = 
-        jnumber |>> Number
+    let listOf item =
+      manySep item listSep
 
-      let stringValue = 
-        jstring |>> Text
+    let array =
+      listOf value
+      |> within beginArray endArray
+      |>> Array
 
-      let scalar =
-        specialLiteral  <|> numberValue <|> stringValue
-        |>> Scalar
+    let object = 
+      listOf field
+      |> within beginObject endObject
+      |>> Object
 
-      let value, valueRef = bootstrap ()
+    let aggregate =
+      object <|> array
+      |>> Aggregate
 
-      let field : (string * Value) Parser = 
-        (jstring .>> nameValSep) .>>. value
+    valueRef :=
+      aggregate <|> scalar
+      |> token
 
-      let listOf item =
-        manySep item listSep
-
-      let array =
-        listOf value
-        |> within beginArray endArray
-        |>> Array
-
-      let object = 
-        listOf field
-        |> within beginObject endObject
-        |>> Object
-
-      let aggregate =
-        object <|> array
-        |>> Aggregate
-
-      valueRef :=
-        aggregate <|> scalar
-        |> token
-
-      let root = aggregate
+    let root = aggregate

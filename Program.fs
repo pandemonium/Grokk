@@ -2,11 +2,20 @@
 open Grokk
 open Grokk.Parsers.Operators
 open Grokk.Sample
+open Grokk.Json.Decoders
 
 type T<'a, 'b> = Q of 'a * 'b
 
 type Textual = 
   | MakeT of string
+
+type Person =
+  { name:       string
+    id:         Guid
+    age:        int
+    employment: string
+    male:       bool
+  }
 
 [<EntryPoint>]
 let main argv =
@@ -123,5 +132,52 @@ let main argv =
   runWith
   <| Input.from "d3:cow3:moo4:spaml4:infoi32eee"  
   <| Bencode.Parse.value
+
+  let someOtherJson =
+    """
+      [
+        { "name": "Plucke Berrén",
+          "id": "8beda949-c11c-4f1a-a46e-01bdb8c47447",
+          "age": 47,
+          "employment": "Nej!",
+          "male": true
+        },
+        { "name": "Berra Pluckelius",
+          "id": "552d53ba-9f3a-4ad2-a22e-dcc75901bd82",
+          "age": 42,
+          "employment": "Rojne Blom AB",
+          "male": false
+        }
+      ]
+    """
+
+  runWith
+  <| Input.from (someOtherJson.Trim ())
+  <| Json.Parser.root
+  
+  let decodeWith (input: string) decoder =
+    Decode.run (input.Trim ()) decoder
+    |> printfn "Output: %A"
+
+  let person : Person Decoder = decoder {
+    let! name       = Decode.text
+    let! id         = Decode.guid
+    let! age        = Decode.number |> Decode.map int
+    let! employment = Decode.text
+    let! male       = Decode.boolean
+
+    return
+      { name       = name
+        id         = id
+        age        = age
+        employment = employment
+        male       = male
+      }
+  }
+
+  let decodeListing : Person list Decoder = 
+    Decode.array person
+
+  decodeWith someOtherJson decodeListing
 
   0
