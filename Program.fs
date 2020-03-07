@@ -13,7 +13,7 @@ type Person =
   { name:       string
     id:         Guid
     age:        int
-    employment: string
+    employment: string option
     male:       bool
   }
 
@@ -139,7 +139,7 @@ let main argv =
         { "name": "Plucke Berrén",
           "id": "8beda949-c11c-4f1a-a46e-01bdb8c47447",
           "age": 47,
-          "employment": "Nej!",
+          "employment": null,
           "male": true
         },
         { "name": "Berra Pluckelius",
@@ -155,16 +155,20 @@ let main argv =
   <| Input.from (someOtherJson.Trim ())
   <| Json.Parser.root
   
-  let decodeWith (input: string) decoder =
-    Decode.run (input.Trim ()) decoder
-    |> printfn "Output: %A"
+  let decodeWith (input: string) =
+    Decode.run (input.Trim ()) 
+    >> printfn "Output: %A"
+
+  let tinyJson = "[1, 2, 3]"
+
+  decodeWith tinyJson <| Decode.array Decode.integer
 
   let person : Person Decoder = decoder {
-    let! name       = Decode.text
-    let! id         = Decode.guid
-    let! age        = Decode.number |> Decode.map int
-    let! employment = Decode.text
-    let! male       = Decode.boolean
+    let! name       = Decode.field "name"       Decode.text
+    let! id         = Decode.field "id"         Decode.guid
+    let! age        = Decode.field "age"        Decode.integer
+    let! employment = Decode.field "employment" <| Decode.optional Decode.text
+    let! male       = Decode.field "male"       Decode.boolean
 
     return
       { name       = name

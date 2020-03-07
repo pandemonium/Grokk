@@ -13,7 +13,7 @@ namespace Grokk.Json
     and Decoded<'a> = 
       Result<'a, Reason>
     and Reason = 
-      | Expected     of Thing
+      | Expected     of Thing * Input
       | ParserFailed of Because * Grokk.Input
     and Thing =
       | Text
@@ -39,7 +39,7 @@ namespace Grokk.Json
 
       let parserFailed reason = Error <| ParserFailed reason
 
-      let expected thing = failed <| Expected thing
+      let expected thing got = failed <| Expected (thing, got)
 
       let point (x: 'a) : 'a Decoded = Ok x
 
@@ -52,12 +52,10 @@ namespace Grokk.Json
         point f <*> p <*> q
 
       let traverse (f: 'a -> 'b Decoded) (xs: 'a list) : 'b list Decoded =
-        let inject = 
-          map2 (fun acc x -> x::acc)
-
-        xs
-        |> List.map f
-        |> List.fold inject (Ok [])
+        List.foldBack 
+        <| map2 cons
+        <| List.map f xs
+        <| Ok []
 
 
     module Thing =
@@ -83,16 +81,16 @@ namespace Grokk.Json
 
 
     module Decode =
-      let expect thing extract : 'a Decoder =
-        extract >> function
+      let expect thing extract : 'a Decoder = fun input ->
+        extract input |> function
         | Some thing -> Decoded.point thing
-        | None       -> Error <| Expected thing
+        | None       -> Error <| Expected (thing, input)
 
       let yes (x: 'a) : 'a Decoder =
         konst <| Decoded.point x
         
       let expected thing : 'a Decoder =
-        konst <| Decoded.expected thing
+        Decoded.expected thing
 
       let bind (f: 'a -> 'b Decoder) (decoder: 'a Decoder) : 'b Decoder = fun input ->
         match decoder input with
@@ -126,6 +124,9 @@ namespace Grokk.Json
             None
         )
 
+      let integer : int Decoder =
+        number |> map int
+
       let boolean : bool Decoder =
         expect Boolean (function
           | Scalar (Special (True as x))
@@ -144,7 +145,7 @@ namespace Grokk.Json
 
       let optional (decoder: 'a Decoder) : 'a option Decoder =
         decoder 
-        >> Decoded.fold (Some >> Ok) (fun _ -> Ok None)
+        >> Decoded.fold (Some >> Ok) (konst <| Ok None)
 
       let array (decoder: 'a Decoder) : 'a list Decoder =
         expect Array (function
@@ -162,12 +163,12 @@ namespace Grokk.Json
           | _ ->
             None
         )
-        >> Decoded.bind (
+        |> bind (
             List.tryFind (fun (name', _) -> name = name')
             >> function
-               | Some (_, thing) -> decoder thing
-               | None            -> Decoded.expected <| Field name
-        )
+               | Some (_, thing) -> konst <| decoder thing
+               | None            -> expected <| Field name
+           )
 
       let run input (decoder: 'a Decoder) =
         let input' = Input.from input

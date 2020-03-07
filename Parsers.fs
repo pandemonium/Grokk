@@ -12,6 +12,8 @@ namespace Grokk
     
     let tuple f (a, b) = f a b
 
+    let cons x xs = x::xs
+
 
   type Parser<'a> = 
     Input -> Output<'a>
