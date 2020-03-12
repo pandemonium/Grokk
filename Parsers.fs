@@ -75,6 +75,9 @@ namespace Grokk
         else        
           No (EndOfInput, input)
 
+    let position input = 
+      Yes (input.at, input)
+
   
   module Output =
   
@@ -106,6 +109,9 @@ namespace Grokk
     let bind f parser =
       parser >> Output.fold No (tuple f)
 
+    let apply fa a =
+      fa |> bind (fun f -> map f a)
+
     let zipWith f p q =
       bind (fun p' ->
         map (fun q' -> f p' q') q
@@ -125,6 +131,10 @@ namespace Grokk
 
     let skip p =
       produce p ()
+
+    let position : int Parser =
+      Input.position
+
 
     let suchThat qualifies (parser: 'a Parser) = fun input ->
       bind (fun theThing ->
@@ -179,6 +189,8 @@ namespace Grokk
       let (|>>) fa f = map f fa
 
       let (>>=) fa f = bind f fa
+
+      let (<*>) = apply
 
       let (.>>) = zipA
 

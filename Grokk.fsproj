@@ -6,8 +6,10 @@
   <ItemGroup>
     <Compile Include="Parsers.fs" />
     <Compile Include="Json/Parser.fs" />
-    <Compile Include="Json/Codec.fs" />
-    <Compile Include="Bencode.fs" />
+    <Compile Include="Json/Decoders.fs" />
+    <Compile Include="Json/Encoders.fs" />
+    <Compile Include="Samples/Bencode.fs" />
+    <Compile Include="Samples/FSharp.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 </Project>

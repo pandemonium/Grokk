@@ -3,6 +3,7 @@ open Grokk
 open Grokk.Parsers.Operators
 open Grokk.Sample
 open Grokk.Json.Decoders
+open Grokk.Json.Encoders
 
 type T<'a, 'b> = Q of 'a * 'b
 
@@ -183,5 +184,36 @@ let main argv =
     Decode.array person
 
   decodeWith someOtherJson decodeListing
+
+  let aPerson =
+    { name       = "Bertram Tuut"
+      id         = Guid.NewGuid ()
+      age        = 77
+      employment = Some "Random gig"
+      male       = true
+    }
+
+  let bPerson =
+    { name       = "Dolores Dole"
+      id         = Guid.NewGuid ()
+      age        = 17
+      employment = None
+      male       = false
+    }
+
+  let persons = [ aPerson; bPerson ]
+
+  let encodePerson p = 
+    [ "name", p.name |> Encode.text
+      "id",   p.id |> Encoder.contramap (fun guid -> guid.ToString ()) Encode.text
+      "age",  decimal p.age |> Encode.number
+      "employment", p.employment |> Encode.optional Encode.text
+      "male", p.male |> Encode.boolean
+    ]
+    |> Encode.object
+
+  Encode.array encodePerson
+  |> Encoder.run persons
+  |> printfn "%s"
 
   0

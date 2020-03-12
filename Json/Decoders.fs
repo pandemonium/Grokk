@@ -35,11 +35,11 @@ namespace Grokk.Json
 
       let map = Result.map
 
-      let failed = Error
+      let parserFailed reason = 
+        Error <| ParserFailed reason
 
-      let parserFailed reason = Error <| ParserFailed reason
-
-      let expected thing got = failed <| Expected (thing, got)
+      let expected thing got = 
+        Error <| Expected (thing, got)
 
       let point (x: 'a) : 'a Decoded = Ok x
 
@@ -81,10 +81,10 @@ namespace Grokk.Json
 
 
     module Decode =
-      let expect thing extract : 'a Decoder = fun input ->
-        extract input |> function
+      let expect expectation extract : 'a Decoder = fun input ->
+        match extract input with
         | Some thing -> Decoded.point thing
-        | None       -> Error <| Expected (thing, input)
+        | None       -> Decoded.expected expectation input
 
       let yes (x: 'a) : 'a Decoder =
         konst <| Decoded.point x
@@ -185,6 +185,3 @@ namespace Grokk.Json
       member __.Return(x) = Decode.yes x
         
     let decoder = DecoderBuilder ()
-
-    module Encoders =
-      let x = 1
